@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: file-pipeline-processor
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
+    virtual-host: /
+
+    listener:
+      simple:
+        missing-queues-fatal: false
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2
+
+file-service:
+  rabbitmq:
+    exchange: ${FILE_SERVICE_RABBITMQ_EXCHANGE:file.exchange}
+    routing-key: ${FILE_SERVICE_RABBITMQ_ROUTING_KEY:file.uploaded}
+    queue: ${FILE_SERVICE_RABBITMQ_QUEUE:file.processing.queue}
