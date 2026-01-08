@@ -20,8 +20,31 @@ spring:
           max-interval: 10000
           multiplier: 2
 
+filesdb:
+  datasource:
+    url: ${FILESDB_URL:jdbc:mysql://localhost:3307/file_service_db}
+    username: ${FILESDB_USER:fileuser}
+    password: ${FILESDB_PASSWORD:filepass123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      pool-name: filesdb-pool
+
+minio:
+  url: ${MINIO_URL:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket: ${MINIO_BUCKET:file-pipeline}
+
+  keys:
+    original-prefix: ${MINIO_PREFIX_ORIGINAL:original/}
+    encrypted-prefix: ${MINIO_PREFIX_ENCRYPTED:encrypted/}
+    metadata-prefix: ${MINIO_PREFIX_METADATA:metadata/}
+
 file-service:
   rabbitmq:
     exchange: ${FILE_SERVICE_RABBITMQ_EXCHANGE:file.exchange}
     routing-key: ${FILE_SERVICE_RABBITMQ_ROUTING_KEY:file.uploaded}
     queue: ${FILE_SERVICE_RABBITMQ_QUEUE:file.processing.queue}
+    queue-ttl-ms: ${FILE_SERVICE_RABBITMQ_QUEUE_TTL_MS:86400000}
