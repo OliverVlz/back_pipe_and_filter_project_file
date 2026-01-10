@@ -11,12 +11,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.file_pipeline_processor.application.dto.FileEventDto;
 import com.project.file_pipeline_processor.application.service.crypto.CryptoEnvelope;
 import com.project.file_pipeline_processor.application.service.crypto.CryptoService;
+import com.project.file_pipeline_processor.application.service.crypto.HashUtil;
 import com.project.file_pipeline_processor.application.service.pipeline.FileObjectKeyFactory;
 import com.project.file_pipeline_processor.application.service.pipeline.ProcessedFileMetadata;
 
 import com.project.file_pipeline_processor.domain.model.FileMessage;
 import com.project.file_pipeline_processor.domain.port.in.ProcessFileMessageUseCase;
 import com.project.file_pipeline_processor.infrastructure.adapter.out.persistence.FilesDbFileContentReader;
+import com.project.file_pipeline_processor.infrastructure.adapter.out.persistence.FileDocumentsJdbcRepository;
 import com.project.file_pipeline_processor.infrastructure.adapter.out.storage.MinioObjectStorage;
 
 @Service
@@ -25,6 +27,7 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 	private static final Logger log = LoggerFactory.getLogger(ProcessFileMessageService.class);
 
 	private final FilesDbFileContentReader filesDbFileContentReader;
+	private final FileDocumentsJdbcRepository fileDocumentsJdbcRepository;
 	private final CryptoService cryptoService;
 	private final MinioObjectStorage minioObjectStorage;
 	private final ObjectMapper objectMapper;
@@ -32,12 +35,14 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 
 	public ProcessFileMessageService(
 			FilesDbFileContentReader filesDbFileContentReader,
+			FileDocumentsJdbcRepository fileDocumentsJdbcRepository,
 			CryptoService cryptoService,
 			MinioObjectStorage minioObjectStorage,
 			ObjectMapper objectMapper,
 			FileObjectKeyFactory keyFactory
 	) {
 		this.filesDbFileContentReader = filesDbFileContentReader;
+		this.fileDocumentsJdbcRepository = fileDocumentsJdbcRepository;
 		this.cryptoService = cryptoService;
 		this.minioObjectStorage = minioObjectStorage;
 		this.objectMapper = objectMapper;
@@ -62,12 +67,15 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 			CryptoEnvelope envelope = cryptoService.encrypt(originalBytes);
 			byte[] decryptedBytes = cryptoService.decrypt(envelope);
 
-			String shaOriginal = cryptoService.sha256Hex(originalBytes);
-			String shaDecrypted = cryptoService.sha256Hex(decryptedBytes);
+			String shaOriginal = HashUtil.sha256Hex(originalBytes);
+			String shaDecrypted = HashUtil.sha256Hex(decryptedBytes);
 			boolean ok = shaOriginal.equalsIgnoreCase(shaDecrypted);
 			if (!ok) {
 				throw new IllegalStateException("Validación de descifrado falló. shaOriginal != shaDecrypted");
 			}
+
+			// Actualizar el hash en la tabla file_documents
+			fileDocumentsJdbcRepository.updateHashByUuid(fileUuid, shaOriginal);
 
 			ProcessedFileMetadata metadata = new ProcessedFileMetadata(
 					fileUuid,

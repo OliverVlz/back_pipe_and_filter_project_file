@@ -23,13 +23,14 @@ spring:
 filesdb:
   datasource:
     url: ${FILESDB_URL:jdbc:mysql://localhost:3307/file_service_db}
-    username: ${FILESDB_USER:fileuser}
-    password: ${FILESDB_PASSWORD:filepass123}
+    username: root
+    password: root123
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 5
       minimum-idle: 1
       pool-name: filesdb-pool
+
 
 minio:
   url: ${MINIO_URL:http://localhost:9000}
