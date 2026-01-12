@@ -8,7 +8,6 @@ spring:
     username: ${RABBITMQ_USER:admin}
     password: ${RABBITMQ_PASSWORD:admin123}
     virtual-host: /
-
     listener:
       simple:
         missing-queues-fatal: false
@@ -20,11 +19,15 @@ spring:
           max-interval: 10000
           multiplier: 2
 
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/filesdb}
+
 filesdb:
   datasource:
     url: ${FILESDB_URL:jdbc:mysql://localhost:3307/file_service_db}
-    username: ${FILESDB_USER:fileuser}
-    password: ${FILESDB_PASSWORD:filepass123}
+    username: root
+    password: root123
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 5
@@ -36,7 +39,6 @@ minio:
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket: ${MINIO_BUCKET:file-pipeline}
-
   keys:
     original-prefix: ${MINIO_PREFIX_ORIGINAL:original/}
     encrypted-prefix: ${MINIO_PREFIX_ENCRYPTED:encrypted/}
