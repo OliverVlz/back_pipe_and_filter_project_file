@@ -20,6 +20,8 @@ import com.project.file_pipeline_processor.domain.port.in.ProcessFileMessageUseC
 import com.project.file_pipeline_processor.infrastructure.adapter.out.persistence.FilesDbFileContentReader;
 import com.project.file_pipeline_processor.infrastructure.adapter.out.persistence.FileDocumentsJdbcRepository;
 import com.project.file_pipeline_processor.infrastructure.adapter.out.storage.MinioObjectStorage;
+import com.project.file_pipeline_processor.infrastructure.adapter.out.persistence.mongo.ProcessedFileMetadataDocument;
+import com.project.file_pipeline_processor.infrastructure.adapter.out.persistence.mongo.ProcessedFileMetadataMongoRepository;
 
 @Service
 public class ProcessFileMessageService implements ProcessFileMessageUseCase {
@@ -32,6 +34,7 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 	private final MinioObjectStorage minioObjectStorage;
 	private final ObjectMapper objectMapper;
 	private final FileObjectKeyFactory keyFactory;
+    private final ProcessedFileMetadataMongoRepository metadataMongoRepository;
 
 	public ProcessFileMessageService(
 			FilesDbFileContentReader filesDbFileContentReader,
@@ -39,7 +42,8 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 			CryptoService cryptoService,
 			MinioObjectStorage minioObjectStorage,
 			ObjectMapper objectMapper,
-			FileObjectKeyFactory keyFactory
+			FileObjectKeyFactory keyFactory,
+            ProcessedFileMetadataMongoRepository metadataMongoRepository
 	) {
 		this.filesDbFileContentReader = filesDbFileContentReader;
 		this.fileDocumentsJdbcRepository = fileDocumentsJdbcRepository;
@@ -47,6 +51,7 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 		this.minioObjectStorage = minioObjectStorage;
 		this.objectMapper = objectMapper;
 		this.keyFactory = keyFactory;
+        this.metadataMongoRepository = metadataMongoRepository;
 	}
 
 	@Override
@@ -97,6 +102,28 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 					event.contentType() == null || event.contentType().isBlank() ? "application/octet-stream" : event.contentType());
 			minioObjectStorage.putBytes(keyFactory.encryptedKey(fileUuid), envelope.encryptedData(), "application/octet-stream");
 			minioObjectStorage.putBytes(keyFactory.metadataKey(fileUuid), metadataJson, "application/json");
+
+			// Persist metadata to MongoDB (best-effort)
+			try {
+				ProcessedFileMetadataDocument doc = new ProcessedFileMetadataDocument(
+					metadata.fileId(),
+					metadata.fileTableId(),
+					metadata.fileName(),
+					metadata.mimeType(),
+					metadata.originalSize(),
+					metadata.sha256Original(),
+					metadata.sha256Decrypted(),
+					metadata.decryptValidationOk(),
+					metadata.encryptionAlgorithm(),
+					metadata.ivBase64(),
+					metadata.encryptedAesKeyBase64(),
+					metadata.processedAt()
+				);
+				ProcessedFileMetadataDocument saved = metadataMongoRepository.save(doc);
+				log.info("[Pipeline] Metadata persisted to MongoDB. id={}", saved.getFileId());
+			} catch (Exception ex) {
+				log.warn("[Pipeline] No se pudo persistir metadata en MongoDB: {}", ex.getMessage());
+			}
 
 			log.info("[Pipeline] OK. fileUuid={}, bytes={}", fileUuid, originalBytes.length);
 		} catch (Exception ex) {
