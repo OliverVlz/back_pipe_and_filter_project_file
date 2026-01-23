@@ -21,7 +21,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/filesdb?directConnection=true}
+      uri: ${MONGODB_URI:mongodb://localhost:27019/filesdb?directConnection=true}
       
 filesdb:
   datasource:
