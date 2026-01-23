@@ -120,7 +120,7 @@ public class ProcessFileMessageService implements ProcessFileMessageUseCase {
 					metadata.processedAt()
 				);
 				ProcessedFileMetadataDocument saved = metadataMongoRepository.save(doc);
-				log.info("[Pipeline] Metadata persisted to MongoDB. id={}", saved.getFileId());
+				log.info("[Pipeline] Metadata persisted to MongoDB. uuid={}", saved.getId());
 			} catch (Exception ex) {
 				log.warn("[Pipeline] No se pudo persistir metadata en MongoDB: {}", ex.getMessage());
 			}
