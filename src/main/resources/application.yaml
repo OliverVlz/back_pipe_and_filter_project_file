@@ -35,10 +35,11 @@ filesdb:
       pool-name: filesdb-pool
 
 minio:
+  public-url: ${MINIO_PUBLIC_URL:https://minio.local}
+  bucket: ${MINIO_BUCKET:bucket}
   url: ${MINIO_URL:http://localhost:9000}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
-  bucket: ${MINIO_BUCKET:file-pipeline}
   keys:
     original-prefix: ${MINIO_PREFIX_ORIGINAL:original/}
     encrypted-prefix: ${MINIO_PREFIX_ENCRYPTED:encrypted/}
