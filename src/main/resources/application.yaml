@@ -21,7 +21,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27019/filesdb?directConnection=true}
+      uri: ${MONGODB_URI:mongodb://localhost:27018,localhost:27019,localhost:27020/filesdb?replicaSet=rs0&readPreference=secondaryPreferred}
       
 filesdb:
   datasource:
@@ -51,3 +51,7 @@ file-service:
     routing-key: ${FILE_SERVICE_RABBITMQ_ROUTING_KEY:file.uploaded}
     queue: ${FILE_SERVICE_RABBITMQ_QUEUE:file.processing.queue}
     queue-ttl-ms: ${FILE_SERVICE_RABBITMQ_QUEUE_TTL_MS:86400000}
+
+
+server:
+  port: 8084

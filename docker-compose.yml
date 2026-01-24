@@ -1,28 +1,68 @@
 version: "3.9"
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: filesdb
-      MYSQL_USER: app
-      MYSQL_PASSWORD: app123
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-
-  mongo:
+  
+  mongo-primary:
     image: mongo:6
-    container_name: mongo-db
+    container_name: mongo-primary
     restart: unless-stopped
+    command: mongod --replSet rs0 --bind_ip_all
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
-      - mongo_data:/data/db
+      - mongo_primary_data:/data/db
+    networks:
+      - mongo-network
+
+  mongo-secondary-1:
+    image: mongo:6
+    container_name: mongo-secondary-1
+    restart: unless-stopped
+    command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_secondary1_data:/data/db
+    depends_on:
+      - mongo-primary
+    networks:
+      - mongo-network
+
+  mongo-secondary-2:
+    image: mongo:6
+    container_name: mongo-secondary-2
+    restart: unless-stopped
+    command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo_secondary2_data:/data/db
+    depends_on:
+      - mongo-primary
+    networks:
+      - mongo-network
+
+  mongo-init:
+    image: mongo:6
+    container_name: mongo-init
+    restart: "no"
+    depends_on:
+      - mongo-primary
+      - mongo-secondary-1
+      - mongo-secondary-2
+    networks:
+      - mongo-network
+    command: >
+      mongosh --host mongo-primary:27017 --eval '
+        rs.initiate({
+          _id: "rs0",
+          members: [
+            { _id: 0, host: "mongo-primary:27017", priority: 2 },
+            { _id: 1, host: "mongo-secondary-1:27017", priority: 1 },
+            { _id: 2, host: "mongo-secondary-2:27017", priority: 1 }
+          ]
+        })
+      '
 
   minio:
     image: minio/minio
@@ -37,9 +77,39 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    networks:
+      - mongo-network
+
+  file-pipeline-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: file-pipeline-processor
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      MONGODB_URI: mongodb://mongo-primary:27017,mongo-secondary-1:27017,mongo-secondary-2:27017/filesdb?replicaSet=rs0&readPreference=secondaryPreferred
+      MINIO_URL: http://minio:9000
+      RABBITMQ_HOST: rabbitmq
+      FILESDB_URL: jdbc:mysql://mysql-master:3306/file_service_db?useSSL=false&allowPublicKeyRetrieval=true
+    depends_on:
+      - mongo-primary
+      - mongo-secondary-1
+      - mongo-secondary-2
+      - minio
+    networks:
+      - mongo-network
+      - file-service-network  # <-- AGREGAR ESTA LÍNEA
+
+networks:
+  mongo-network:
+    driver: bridge
+  file-service-network:     # <-- AGREGAR ESTE BLOQUE
+    external: true
 
 volumes:
-  mysql_data:
-  mongo_data:
+  mongo_primary_data:
+  mongo_secondary1_data:
+  mongo_secondary2_data:
   minio_data:
-
